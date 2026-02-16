@@ -6,9 +6,7 @@ import {
   calcOuts
 } from './engine.js';
 
-// ═══════════════════════════════════════════════════
-// WEB WORKER for Monte Carlo simulation
-// ═══════════════════════════════════════════════════
+// lazy-load the web worker so the sim doesn't block the UI thread
 let worker = null;
 
 function getWorker() {
@@ -18,9 +16,7 @@ function getWorker() {
   return worker;
 }
 
-// ═══════════════════════════════════════════════════
-// APP STATE
-// ═══════════════════════════════════════════════════
+// everything the UI needs to track lives here
 const S = {
   hand: [null,null],
   board: [null,null,null,null,null],
@@ -36,9 +32,7 @@ function getKnownCards() {
   return [...S.hand,...S.board].filter(c=>c!==null);
 }
 
-// ═══════════════════════════════════════════════════
-// RANGE INPUT
-// ═══════════════════════════════════════════════════
+// fires on every keystroke in the range textarea, validates and syncs the grid
 function onRangeInput() {
   const str = document.getElementById('range-input').value;
   const {combos, errors} = parseRange(str);
@@ -67,11 +61,11 @@ function getRangeCombos() {
   return combos;
 }
 
-// ═══════════════════════════════════════════════════
-// RANGE GRID (13x13 hand matrix)
-// ═══════════════════════════════════════════════════
+// the 13x13 grid where you click to toggle hands on/off
+// diagonal = pairs, upper-right = suited, lower-left = offsuit
 const GRID_RANKS = [...RANKS].reverse();
 
+// builds the whole grid of 169 cells on page load
 function initRangeGrid() {
   const grid = document.getElementById('range-grid');
   grid.innerHTML = '';
@@ -121,6 +115,7 @@ function updateGridCell(cell) {
   }
 }
 
+// turns whatever's selected on the grid into actual [card, card] combos
 function getGridCombos() {
   const out = new Set();
   for (const [key, active] of Object.entries(S.gridState)) {
@@ -140,6 +135,7 @@ function getGridCombos() {
   return [...out].map(k=>k.split(',').map(Number));
 }
 
+// when you type in the text box, update the grid to match
 function syncGridFromText() {
   S.gridState = {};
   const str = document.getElementById('range-input').value;
@@ -157,9 +153,7 @@ function syncGridFromText() {
   document.getElementById('combo-count-grid').textContent = combos.length + ' combos';
 }
 
-// ═══════════════════════════════════════════════════
-// TABS
-// ═══════════════════════════════════════════════════
+// manual / grid / ai tab switching
 function switchTab(name, btn) {
   S.activeTab = name;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -168,9 +162,7 @@ function switchTab(name, btn) {
   document.getElementById('tab-'+name).classList.add('active');
 }
 
-// ═══════════════════════════════════════════════════
-// AI RANGE TRANSLATOR
-// ═══════════════════════════════════════════════════
+// sends a plain-english description to the backend and gets a range back
 async function translateRange() {
   const desc = document.getElementById('ai-range-input').value.trim();
   if (!desc) return;
@@ -207,15 +199,14 @@ async function translateRange() {
   btn.textContent = '→ Generate';
 }
 
+// takes the AI-generated range and puts it in the manual text box
 function applyAIRange() {
   if (!S.lastAIRange) return;
   setRange(S.lastAIRange);
   document.querySelectorAll('.tab-btn')[0].click();
 }
 
-// ═══════════════════════════════════════════════════
-// CARD PICKER
-// ═══════════════════════════════════════════════════
+// the modal where you pick suit then rank to select a card
 function openPicker(el) {
   S.currentSlot = el;
   S.pickerSuit = null;
@@ -239,6 +230,7 @@ function pickSuit(btn) {
   buildRankGrid();
 }
 
+// rebuilds the rank buttons, graying out cards already in use
 function buildRankGrid() {
   const grid = document.getElementById('rank-grid');
   const used = new Set(getKnownCards());
@@ -258,6 +250,7 @@ function buildRankGrid() {
   }
 }
 
+// user picked a card, put it in the slot and close the picker
 function commitCard(rank) {
   if (!S.currentSlot || !S.pickerSuit) return;
   const c = cid(rank, SUITS.indexOf(S.pickerSuit));
@@ -279,6 +272,7 @@ function removeCard() {
   updateStreet();
 }
 
+// renders a card slot as either empty (+) or a filled card with rank/suit
 function renderSlot(el, c) {
   if (c===null) {
     el.classList.remove('filled','c-red','c-black');
@@ -299,6 +293,7 @@ function clearBoard() {
   updateStreet();
 }
 
+// figures out if we're on pre-flop/flop/turn/river based on board cards
 function updateStreet() {
   const n = S.board.filter(c=>c!==null).length;
   const labels = {0:'Pre-flop',3:'Flop',4:'Turn',5:'River'};
@@ -306,9 +301,7 @@ function updateStreet() {
   document.getElementById('street-badge').textContent = labels[key]||'Pre-flop';
 }
 
-// ═══════════════════════════════════════════════════
-// PLAYERS
-// ═══════════════════════════════════════════════════
+// +/- buttons for player count, clamped between 2 and 9
 function adjPlayers(d) {
   S.players = Math.max(2,Math.min(9,S.players+d));
   document.getElementById('player-count').textContent = S.players;
@@ -316,9 +309,8 @@ function adjPlayers(d) {
   document.getElementById('player-desc').textContent = desc[S.players]||`${S.players} players`;
 }
 
-// ═══════════════════════════════════════════════════
-// CALCULATE (via Web Worker)
-// ═══════════════════════════════════════════════════
+// kicks off the monte carlo sim in the web worker
+// shows live progress on the equity bar as chunks come back
 function calculate() {
   const hole = S.hand.filter(c=>c!==null);
   if (hole.length < 2) { alert('Select both hole cards.'); return; }
@@ -411,9 +403,7 @@ function calculate() {
   });
 }
 
-// ═══════════════════════════════════════════════════
-// AI STRATEGIC ANALYSIS
-// ═══════════════════════════════════════════════════
+// sends current hand/board/equity to the backend for a GTO-style analysis
 async function getAnalysis() {
   const btn = document.getElementById('ai-analysis-btn');
   const out = document.getElementById('ai-text');
@@ -464,9 +454,8 @@ async function getAnalysis() {
   }
 }
 
-// ═══════════════════════════════════════════════════
-// POT ODDS / EV CALCULATOR
-// ═══════════════════════════════════════════════════
+// recalculates pot odds and expected value whenever you change the inputs
+// reads win/lose from the equity results so it stays in sync
 function updatePotOdds() {
   const potSize = parseFloat(document.getElementById('pot-size').value);
   const betToCall = parseFloat(document.getElementById('bet-to-call').value);
@@ -512,9 +501,7 @@ function updatePotOdds() {
   resultsEl.style.display = 'block';
 }
 
-// ═══════════════════════════════════════════════════
-// SAVE / LOAD RANGES
-// ═══════════════════════════════════════════════════
+// saved ranges live in localStorage so they persist across sessions
 function getSavedRanges() {
   try {
     return JSON.parse(localStorage.getItem('poker-saved-ranges')) || [];
@@ -525,6 +512,7 @@ function saveSavedRanges(ranges) {
   localStorage.setItem('poker-saved-ranges', JSON.stringify(ranges));
 }
 
+// prompts for a name then stashes the current range text
 function saveRange() {
   const range = document.getElementById('range-input').value.trim();
   if (!range) { alert('Enter a range first.'); return; }
@@ -536,10 +524,12 @@ function saveRange() {
   loadSavedRanges();
 }
 
+// basic html escape so saved range names don't accidentally inject anything
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// renders the saved ranges list with load/delete buttons
 function loadSavedRanges() {
   const ranges = getSavedRanges();
   const list = document.getElementById('saved-ranges-list');
@@ -576,9 +566,7 @@ function deleteSavedRange(index) {
   loadSavedRanges();
 }
 
-// ═══════════════════════════════════════════════════
-// PRESETS
-// ═══════════════════════════════════════════════════
+// common opening ranges people actually use
 const PRESETS = {
   'utg-tight': 'AA, KK, QQ, JJ, TT, AKs, AKo',
   'utg-standard': '99+, AJs+, AQo+, KQs',
@@ -589,9 +577,7 @@ const PRESETS = {
   'any-two': '22+, A2s+, A2o+, K2s+, K2o+, Q2s+, Q2o+, J2s+, J2o+, T2s+, T2o+, 92s+, 92o+, 82s+, 82o+, 72s+, 72o+, 62s+, 62o+, 52s+, 52o+, 42s+, 42o+, 32s, 32o'
 };
 
-// ═══════════════════════════════════════════════════
-// WIRE UP DOM EVENTS
-// ═══════════════════════════════════════════════════
+// hooks up all the click/input handlers and initializes everything
 function init() {
   // Range input
   document.getElementById('range-input').addEventListener('input', onRangeInput);

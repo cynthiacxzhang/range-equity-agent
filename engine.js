@@ -1,7 +1,5 @@
-// ═══════════════════════════════════════════════════
-// CARD ENGINE
-// card = rank*4 + suit  (rank 0-12=2..A, suit 0-3=s/h/d/c)
-// ═══════════════════════════════════════════════════
+// each card is just a number: rank*4 + suit
+// rank goes 0-12 (2 through A), suit 0-3 (s/h/d/c)
 export const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
 export const SUITS = ['s','h','d','c'];
 export const SUIT_SYM = { s:'♠', h:'♥', d:'♦', c:'♣' };
@@ -13,10 +11,8 @@ export const crank = c => c>>2;
 export const csuit = c => c&3;
 export const cstr = c => RANKS[crank(c)] + SUITS[csuit(c)];
 
-// ═══════════════════════════════════════════════════
-// PRECOMPUTED C(n,5) INDICES
-// For 7 cards: 21 combos. For 6 cards: 6 combos. For 5: 1.
-// ═══════════════════════════════════════════════════
+// precompute every way to pick 5 cards from n cards
+// we flatten the indices so the hot loop can just stride by 5
 function precomputeCombos(n) {
   const result = [];
   for (let a=0;a<n-4;a++) for (let b=a+1;b<n-3;b++) for (let c=b+1;c<n-2;c++)
@@ -29,14 +25,14 @@ const COMBOS_5 = precomputeCombos(5); // 1 combo × 5 = 5 entries
 const COMBOS_6 = precomputeCombos(6); // 6 combos × 5 = 30 entries
 const COMBOS_7 = precomputeCombos(7); // 21 combos × 5 = 105 entries
 
-// ═══════════════════════════════════════════════════
-// HAND EVALUATOR — optimized hot path
-// Reuses buffers to avoid GC pressure in Monte Carlo loop
-// ═══════════════════════════════════════════════════
-const _rc = new Int8Array(13);   // rank counts (reusable)
-const _rs = new Int8Array(5);    // sorted ranks
-const _ss = new Int8Array(5);    // suits
+// hand evaluator - this is the hottest function in the whole app
+// reuses typed arrays so we don't trash the GC during monte carlo
+const _rc = new Int8Array(13);
+const _rs = new Int8Array(5);
+const _ss = new Int8Array(5);
 
+// scores a 5-card hand as a single number: category*1e8 + tiebreaker
+// higher number = better hand, so you can just compare with >
 export function score5inline(c0, c1, c2, c3, c4) {
   // Extract ranks and suits directly
   const r0 = c0>>2, r1 = c1>>2, r2 = c2>>2, r3 = c3>>2, r4 = c4>>2;
@@ -121,11 +117,12 @@ export function score5inline(c0, c1, c2, c3, c4) {
   return cat*1e8 + tb;
 }
 
-// score5 using array (backward compatible)
+// same thing but takes an array instead of 5 args
 export function score5(h) {
   return score5inline(h[0], h[1], h[2], h[3], h[4]);
 }
 
+// tries every 5-card combo from your cards and returns the best score
 export function bestHand(cards) {
   const n = cards.length;
   let combos;
@@ -148,9 +145,7 @@ export function bestHand(cards) {
 export const handCat = s => Math.floor(s/1e8);
 export const handName = s => HAND_NAMES[Math.min(handCat(s),9)];
 
-// ═══════════════════════════════════════════════════
-// RANGE PARSER
-// ═══════════════════════════════════════════════════
+// takes a string like "AA, AKs, JJ+" and turns it into actual card combos
 export function parseRange(str) {
   if (!str.trim()) return { combos: [], errors: [] };
   const tokens = str.toUpperCase().split(/[\s,]+/).filter(Boolean);
@@ -167,6 +162,7 @@ export function parseRange(str) {
   return { combos: [...combos].map(k => k.split(',').map(Number)), errors };
 }
 
+// handles one token like "AKs" or "JJ+" and expands it into all the card pairs
 function expandToken(token, out) {
   const plus = token.endsWith('+');
   const t = plus ? token.slice(0,-1) : token;
@@ -208,20 +204,21 @@ function expandToken(token, out) {
   }
 }
 
+// always stores the smaller card first so we don't get duplicates
 export function addCombo(c1, c2, out) {
   const key = c1<c2 ? `${c1},${c2}` : `${c2},${c1}`;
   out.add(key);
 }
 
+// removes any combos that conflict with cards already on the board/in hand
 export function filterCombos(combos, blockers) {
   const blocked = new Set(blockers);
   return combos.filter(([c1,c2]) => !blocked.has(c1) && !blocked.has(c2));
 }
 
-// ═══════════════════════════════════════════════════
-// RANGE EQUITY (Monte Carlo)
-// Kept for direct use (tests, non-worker fallback)
-// ═══════════════════════════════════════════════════
+// the main monte carlo sim - randomly deals out the rest of the board
+// thousands of times and counts how often we win/tie/lose
+// this version is for tests and fallback, the worker uses its own copy
 export function calcRangeEquity(myHole, communityCards, opponentCombos, numPlayers, iterations=10000) {
   const knownSet = new Set([...myHole, ...communityCards]);
   const available = [];
@@ -265,9 +262,8 @@ export function calcRangeEquity(myHole, communityCards, opponentCombos, numPlaye
   return { win:wins/iterations, tie:ties/iterations, lose:losses/iterations };
 }
 
-// ═══════════════════════════════════════════════════
-// OUTS
-// ═══════════════════════════════════════════════════
+// checks every remaining card in the deck to see which ones improve our hand
+// returns something like { "Flush": 9, "Straight": 4 }
 export function calcOuts(myHole, board) {
   const known = new Set([...myHole, ...board]);
   const cur = Math.floor(bestHand([...myHole,...board])/1e8);

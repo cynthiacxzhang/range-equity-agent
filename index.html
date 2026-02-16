@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Range Equity — Poker Engine</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-title">
+      <h1>Range Equity</h1>
+      <p>Texas Hold'em · Range-vs-Range · Monte Carlo</p>
+    </div>
+    <div class="street-badge" id="street-badge">Pre-flop</div>
+  </div>
+
+  <!-- LEFT: YOUR HAND + BOARD -->
+  <div class="col-left">
+
+    <div class="panel">
+      <div class="panel-header">Your Hole Cards</div>
+      <div class="card-row" id="hand-slots">
+        <div class="card-slot" data-group="hand" data-index="0"><span class="plus-icon">+</span></div>
+        <div class="card-slot" data-group="hand" data-index="1"><span class="plus-icon">+</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        Board
+        <button id="clear-board-btn" style="font-size:0.58rem;background:none;border:none;color:var(--text3);cursor:pointer;letter-spacing:0.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;">Clear Board</button>
+      </div>
+
+      <div style="font-size:0.58rem;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Flop</div>
+      <div class="card-row" style="margin-bottom:14px">
+        <div class="card-slot" data-group="community" data-index="0"><span class="plus-icon">+</span></div>
+        <div class="card-slot" data-group="community" data-index="1"><span class="plus-icon">+</span></div>
+        <div class="card-slot" data-group="community" data-index="2"><span class="plus-icon">+</span></div>
+      </div>
+
+      <div style="display:flex;gap:20px;">
+        <div>
+          <div style="font-size:0.58rem;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Turn</div>
+          <div class="card-row">
+            <div class="card-slot" data-group="community" data-index="3"><span class="plus-icon">+</span></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.58rem;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">River</div>
+          <div class="card-row">
+            <div class="card-slot" data-group="community" data-index="4"><span class="plus-icon">+</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">Players at Table</div>
+      <div class="players-wrap">
+        <div class="stepper">
+          <button id="players-minus">−</button>
+          <span id="player-count">2</span>
+          <button id="players-plus">+</button>
+        </div>
+        <span style="font-size:0.75rem;color:var(--text2)" id="player-desc">Heads-up</span>
+      </div>
+    </div>
+
+    <button class="calc-btn" id="calc-btn">Calculate Equity →</button>
+  </div>
+
+  <!-- RIGHT: OPPONENT RANGE + RESULTS -->
+  <div class="col-right">
+
+    <div class="panel">
+      <div class="panel-header">Opponent Range</div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="manual">Manual</button>
+        <button class="tab-btn" data-tab="grid">Grid</button>
+        <button class="tab-btn" data-tab="ai-range">AI Translate</button>
+      </div>
+
+      <!-- MANUAL TAB -->
+      <div class="tab-content active" id="tab-manual">
+        <div class="range-block">
+          <div class="range-block-header">
+            <span class="range-label">Range Notation</span>
+            <span class="range-tag" id="combo-count-manual">0 combos</span>
+          </div>
+          <textarea class="range-input" id="range-input" rows="3"
+            placeholder="AA, KK, QQ, AKs, AKo, JJ+, AQs+"></textarea>
+          <div class="range-error" id="range-error">Invalid range token</div>
+        </div>
+
+        <div style="font-size:0.62rem;color:var(--text3);margin-bottom:8px;letter-spacing:0.06em;">Presets</div>
+        <div class="presets">
+          <button class="preset-btn" data-preset="utg-tight">UTG Tight</button>
+          <button class="preset-btn" data-preset="utg-standard">UTG Standard</button>
+          <button class="preset-btn" data-preset="co-open">CO Open</button>
+          <button class="preset-btn" data-preset="btn-wide">BTN Wide</button>
+          <button class="preset-btn" data-preset="btn-very-wide">BTN Very Wide</button>
+          <button class="preset-btn" data-preset="3bet-tight">3-bet Tight</button>
+          <button class="preset-btn" data-preset="any-two">Any Two</button>
+        </div>
+      </div>
+
+      <!-- GRID TAB -->
+      <div class="tab-content" id="tab-grid">
+        <div style="font-size:0.62rem;color:var(--text3);margin-bottom:8px;letter-spacing:0.06em;">Click cells to toggle. Diagonal=pairs, upper-right=suited, lower-left=offsuit.</div>
+        <div class="range-grid-wrap">
+          <div class="range-grid" id="range-grid"></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:10px;font-size:0.6rem;">
+          <span><span style="color:var(--gold)">■</span> Pairs</span>
+          <span><span style="color:var(--green)">■</span> Suited</span>
+          <span><span style="color:#f08888">■</span> Offsuit</span>
+          <span style="color:var(--text3);margin-left:auto" id="combo-count-grid">0 combos</span>
+        </div>
+      </div>
+
+      <!-- AI RANGE TAB -->
+      <div class="tab-content" id="tab-ai-range">
+        <div style="font-size:0.72rem;color:var(--text2);margin-bottom:10px;line-height:1.6;">
+          Describe the opponent. Claude generates their range.
+        </div>
+        <div class="ai-range-wrap">
+          <input class="ai-range-input" id="ai-range-input"
+            placeholder="e.g. tight UTG raiser, loose passive fish, 3-bet range...">
+          <button class="ai-translate-btn" id="ai-translate-btn">→ Generate</button>
+        </div>
+        <div id="ai-range-result" style="display:none;margin-top:10px;background:var(--surface2);border-left:2px solid var(--green);padding:10px 12px;border-radius:0 2px 2px 0;">
+          <div style="font-size:0.58rem;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">Generated Range</div>
+          <div id="ai-range-text" style="font-size:0.78rem;color:var(--green);font-weight:500;word-break:break-all;"></div>
+          <div id="ai-range-reasoning" style="font-size:0.68rem;color:var(--text2);margin-top:6px;line-height:1.6;"></div>
+          <button id="apply-ai-range" style="margin-top:8px;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;padding:5px 12px;border:1px solid var(--border);border-radius:2px;background:transparent;color:var(--gold);cursor:pointer;font-family:'JetBrains Mono',monospace;">Apply This Range</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="panel results-panel" id="results-panel">
+      <div class="panel-header">
+        Equity Results
+        <span id="sim-label" style="color:var(--text3)"></span>
+      </div>
+
+      <div class="equity-bar-outer">
+        <div class="eq-win" id="bar-win"></div>
+        <div class="eq-tie" id="bar-tie"></div>
+        <div class="eq-lose" id="bar-lose"></div>
+      </div>
+
+      <div class="stats-3">
+        <div class="stat-box"><div class="stat-num win" id="stat-win">—</div><div class="stat-lbl">Win</div></div>
+        <div class="stat-box"><div class="stat-num tie" id="stat-tie">—</div><div class="stat-lbl">Tie</div></div>
+        <div class="stat-box"><div class="stat-num lose" id="stat-lose">—</div><div class="stat-lbl">Lose</div></div>
+      </div>
+
+      <div class="hand-badge">
+        <div>
+          <div class="hand-name" id="my-hand-name">—</div>
+          <div class="hand-sub" id="my-hand-sub"></div>
+        </div>
+        <div id="outs-badge" style="text-align:right;font-size:0.68rem;color:var(--text3)"></div>
+      </div>
+
+      <div id="outs-list"></div>
+
+      <button class="ai-analysis-btn" id="ai-analysis-btn">
+        ✦ Get Strategic Analysis
+      </button>
+      <div class="ai-text" id="ai-text"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CARD PICKER -->
+<div class="overlay" id="overlay">
+  <div class="picker">
+    <h3>Pick Card</h3>
+    <div class="suit-row">
+      <button class="suit-btn" data-suit="s">♠</button>
+      <button class="suit-btn" data-suit="h" style="color:#e05252">♥</button>
+      <button class="suit-btn" data-suit="d" style="color:#e05252">♦</button>
+      <button class="suit-btn" data-suit="c">♣</button>
+    </div>
+    <div class="rank-grid" id="rank-grid"></div>
+    <div class="picker-actions">
+      <button class="btn btn-danger" id="picker-remove">Remove</button>
+      <button class="btn btn-ghost" id="picker-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="ui.js"></script>
+</body>
+</html>

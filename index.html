@@ -107,6 +107,13 @@
           <button class="preset-btn" data-preset="3bet-tight">3-bet Tight</button>
           <button class="preset-btn" data-preset="any-two">Any Two</button>
         </div>
+
+        <div class="divider"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:0.62rem;color:var(--text3);letter-spacing:0.06em;">Saved Ranges</span>
+          <button class="preset-btn" id="save-range-btn">+ Save Current</button>
+        </div>
+        <div id="saved-ranges-list"></div>
       </div>
 
       <!-- GRID TAB -->
@@ -175,6 +182,30 @@
         ✦ Get Strategic Analysis
       </button>
       <div class="ai-text" id="ai-text"></div>
+    </div>
+
+    <!-- POT ODDS / EV -->
+    <div class="panel pot-odds-panel" id="pot-odds-panel">
+      <div class="panel-header">Pot Odds / EV Calculator</div>
+      <div class="pot-odds-inputs">
+        <div class="pot-odds-field">
+          <label for="pot-size">Pot Size</label>
+          <input type="number" id="pot-size" min="0" step="any" placeholder="0">
+        </div>
+        <div class="pot-odds-field">
+          <label for="bet-to-call">Bet to Call</label>
+          <input type="number" id="bet-to-call" min="0" step="any" placeholder="0">
+        </div>
+      </div>
+      <div class="pot-odds-results" id="pot-odds-results" style="display:none">
+        <div class="stats-3">
+          <div class="stat-box"><div class="stat-num" id="pot-odds-pct" style="font-size:1.4rem;color:var(--text)">—</div><div class="stat-lbl">Pot Odds</div></div>
+          <div class="stat-box"><div class="stat-num" id="required-equity" style="font-size:1.4rem;color:var(--text)">—</div><div class="stat-lbl">Required Equity</div></div>
+          <div class="stat-box"><div class="stat-num" id="ev-call" style="font-size:1.4rem">—</div><div class="stat-lbl">EV of Calling</div></div>
+        </div>
+        <div id="pot-odds-ratio" style="font-size:0.68rem;color:var(--text3);margin-bottom:10px;text-align:center"></div>
+        <div id="decision-badge" class="decision-badge"></div>
+      </div>
     </div>
 
   </div>

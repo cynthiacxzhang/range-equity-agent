@@ -2,13 +2,14 @@ import {
   bestHand, handName, calcRangeEquity, calcOuts, filterCombos
 } from './engine.js';
 
+// runs the monte carlo sim off the main thread so the UI stays responsive
+// sends progress updates every 2k iterations so the bars animate live
 self.onmessage = (e) => {
   const { type, payload } = e.data;
 
   if (type === 'calc-equity') {
     const { hole, board, oppCombos, numPlayers, iterations } = payload;
 
-    // Run in chunks so we can report progress
     const CHUNK = 2000;
     let wins = 0, ties = 0, losses = 0;
     let done = 0;

@@ -1,0 +1,13 @@
+{
+  "name": "poker-agent",
+  "version": "0.1.0",
+  "description": "Range equity calculator for Texas Hold'em with Monte Carlo simulation",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

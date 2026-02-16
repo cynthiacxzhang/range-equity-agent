@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Range Equity — Poker Engine</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #080c0a;
+  --surface: #0f1612;
+  --surface2: #151e18;
+  --surface3: #1c2a20;
+  --gold: #d4a843;
+  --gold2: #f0c868;
+  --green: #34c97a;
+  --red: #e05252;
+  --amber: #e08c34;
+  --text: #e8e4d8;
+  --text2: #8a9e8f;
+  --text3: #4a5e50;
+  --border: rgba(212,168,67,0.18);
+  --border2: rgba(212,168,67,0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 100% 50% at 50% 0%, #0d1f12 0%, transparent 60%),
+    repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.006) 40px, rgba(255,255,255,0.006) 41px),
+    repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.006) 40px, rgba(255,255,255,0.006) 41px);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto;
+  gap: 0;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  min-height: 100vh;
+}
+
+/* HEADER */
+.header {
+  grid-column: 1 / -1;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border2);
+  margin-bottom: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.header-title h1 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  color: var(--gold);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.header-title p {
+  color: var(--text3);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+.street-badge {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: rgba(212,168,67,0.1);
+  border: 1px solid var(--border);
+  padding: 5px 14px;
+  border-radius: 20px;
+}
+
+/* LEFT COLUMN */
+.col-left {
+  grid-column: 1;
+  padding-right: 20px;
+  border-right: 1px solid var(--border2);
+}
+
+/* RIGHT COLUMN */
+.col-right {
+  grid-column: 2;
+  padding-left: 20px;
+}
+
+/* FULL WIDTH */
+.col-full {
+  grid-column: 1 / -1;
+}
+
+/* PANEL */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.panel-header {
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.7;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* CARD SLOTS */
+.card-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-slot {
+  width: 52px; height: 70px;
+  border: 1px dashed var(--text3);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  background: var(--surface2);
+  transition: all 0.12s;
+  flex-shrink: 0;
+  position: relative;
+}
+.card-slot:hover { border-color: var(--gold); }
+.card-slot.filled { border-style: solid; border-color: rgba(212,168,67,0.5); background: var(--surface3); }
+.card-slot.filled:hover { border-color: var(--red); }
+
+.card-inner { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.c-rank { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700; }
+.c-suit { font-size: 1rem; }
+.card-slot.c-red .c-rank, .card-slot.c-red .c-suit { color: #e05252; }
+.card-slot.c-black .c-rank, .card-slot.c-black .c-suit { color: var(--text); }
+.card-slot .plus-icon { color: var(--text3); font-size: 1.2rem; }
+
+/* RANGE INPUT */
+.range-block {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.range-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.range-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.range-tag {
+  font-size: 0.6rem;
+  color: var(--text3);
+}
+
+.range-input-wrap {
+  position: relative;
+}
+
+.range-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  padding: 9px 12px;
+  transition: border-color 0.12s;
+  outline: none;
+  resize: vertical;
+  min-height: 40px;
+}
+.range-input:focus { border-color: var(--gold); }
+.range-input::placeholder { color: var(--text3); }
+
+.range-combo-count {
+  font-size: 0.62rem;
+  color: var(--text3);
+  margin-top: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.combo-count-num {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.range-error {
+  font-size: 0.62rem;
+  color: var(--red);
+  margin-top: 4px;
+  display: none;
+}
+
+/* PRESET RANGES */
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.preset-btn {
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.1s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.preset-btn:hover { background: rgba(212,168,67,0.1); color: var(--gold); border-color: var(--gold); }
+
+/* AI RANGE TRANSLATOR */
+.ai-range-wrap {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ai-range-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+.ai-range-input:focus { border-color: var(--gold); }
+.ai-range-input::placeholder { color: var(--text3); }
+
+.ai-translate-btn {
+  padding: 8px 14px;
+  background: rgba(212,168,67,0.12);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.ai-translate-btn:hover { background: rgba(212,168,67,0.2); }
+.ai-translate-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* RANGE GRID VISUALIZER */
+.range-grid-wrap {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.range-grid {
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  gap: 2px;
+  min-width: 280px;
+}
+
+.rg-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--surface3);
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.38rem, 1vw, 0.55rem);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.1s;
+  color: var(--text3);
+  user-select: none;
+}
+.rg-cell:hover { border-color: var(--gold); color: var(--text); }
+.rg-cell.active-pair { background: rgba(212,168,67,0.25); color: var(--gold); border-color: rgba(212,168,67,0.4); }
+.rg-cell.active-suited { background: rgba(52,201,122,0.18); color: var(--green); border-color: rgba(52,201,122,0.3); }
+.rg-cell.active-offsuit { background: rgba(224,82,82,0.18); color: #f08888; border-color: rgba(224,82,82,0.3); }
+.rg-cell.diagonal { font-weight: 600; }
+
+/* PLAYERS */
+.players-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.stepper button {
+  width: 32px; height: 32px;
+  background: var(--surface3);
+  border: none;
+  color: var(--gold);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-family: 'Syne', sans-serif;
+}
+.stepper button:hover { background: var(--surface2); }
+.stepper span {
+  width: 44px; text-align: center;
+  font-size: 1rem;
+  background: var(--surface2);
+  line-height: 32px;
+  display: block;
+}
+
+/* CALCULATE BTN */
+.calc-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #7a5e18, var(--gold), #7a5e18);
+  border: none;
+  border-radius: 3px;
+  color: #0a0c08;
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin: 16px 0 0;
+}
+.calc-btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 6px 24px rgba(212,168,67,0.25); }
+.calc-btn:active { transform: none; }
+.calc-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; box-shadow: none; }
+
+/* RESULTS */
+.results-panel { display: none; }
+.results-panel.visible { display: block; }
+
+.equity-bar-outer {
+  height: 28px;
+  background: var(--surface3);
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  margin: 14px 0;
+}
+
+.eq-win { background: linear-gradient(90deg, #1d6640, var(--green)); height: 100%; transition: width 0.7s cubic-bezier(0.22,1,0.36,1); display: flex; align-items: center; padding-left: 8px; font-size: 0.68rem; color: #fff; white-space: nowrap; overflow: hidden; min-width: 0; }
+.eq-tie { background: var(--amber); height: 100%; transition: width 0.7s cubic-bezier(0.22,1,0.36,1) 0.05s; }
+.eq-lose { background: linear-gradient(90deg, var(--red), #6b1818); height: 100%; flex: 1; transition: width 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s; }
+
+.stats-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stat-box {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 14px;
+  text-align: center;
+}
+
+.stat-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-num.win { color: var(--green); }
+.stat-num.tie { color: var(--amber); }
+.stat-num.lose { color: var(--red); }
+.stat-lbl { font-size: 0.58rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text3); }
+
+.hand-badge {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--gold);
+  border-radius: 3px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.hand-name { font-family: 'Syne', sans-serif; color: var(--gold); font-size: 1rem; font-weight: 700; }
+.hand-sub { font-size: 0.65rem; color: var(--text3); }
+
+.outs-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 5px;
+  margin-top: 8px;
+}
+.out-item {
+  display: flex; justify-content: space-between;
+  background: var(--surface2);
+  padding: 5px 8px;
+  border-radius: 2px;
+  font-size: 0.68rem;
+}
+.out-name { color: var(--text2); }
+.out-val { color: var(--gold); }
+
+/* AI ANALYSIS */
+.ai-analysis-btn {
+  width: 100%;
+  padding: 11px;
+  background: transparent;
+  border: 1px solid rgba(212,168,67,0.3);
+  border-radius: 3px;
+  color: var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-top: 10px;
+}
+.ai-analysis-btn:hover { background: rgba(212,168,67,0.06); border-color: var(--gold); }
+.ai-analysis-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.ai-text {
+  display: none;
+  margin-top: 10px;
+  background: var(--surface2);
+  border-left: 2px solid var(--gold);
+  padding: 14px 16px;
+  font-size: 0.78rem;
+  line-height: 1.75;
+  color: var(--text2);
+  border-radius: 0 3px 3px 0;
+  white-space: pre-wrap;
+}
+.ai-text.visible { display: block; }
+.ai-text.thinking { color: var(--text3); font-style: italic; }
+
+/* PICKER */
+.overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
+  align-items: center;
+  justify-content: center;
+}
+.overlay.open { display: flex; }
+
+.picker {
+  background: #0d1510;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 24px;
+  width: min(420px, 94vw);
+}
+.picker h3 {
+  font-family: 'Syne', sans-serif;
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+.suit-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.suit-btn {
+  flex: 1; padding: 9px;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.3rem;
+  transition: all 0.1s;
+}
+.suit-btn:hover { background: var(--surface3); }
+.suit-btn.selected { border-color: var(--gold); background: var(--surface3); }
+.rank-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 16px; }
+.rank-btn {
+  padding: 9px 4px;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  transition: all 0.1s;
+}
+.rank-btn:hover { background: var(--surface3); border-color: var(--gold); }
+.rank-btn.taken { opacity: 0.2; pointer-events: none; }
+.rank-btn.no-suit { opacity: 0.35; pointer-events: none; }
+.picker-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn { padding: 8px 18px; border-radius: 2px; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; border: 1px solid; transition: all 0.12s; }
+.btn-gold { background: var(--gold); border-color: var(--gold); color: #050805; font-weight: 500; }
+.btn-ghost { background: transparent; border-color: var(--text3); color: var(--text2); }
+.btn-ghost:hover { border-color: var(--text); color: var(--text); }
+.btn-danger { background: transparent; border-color: rgba(224,82,82,0.5); color: var(--red); }
+.btn-danger:hover { background: rgba(224,82,82,0.1); }
+
+/* DIVIDER */
+.divider { height: 1px; background: var(--border2); margin: 14px 0; }
+
+/* TABS */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border2); margin-bottom: 14px; }
+.tab-btn {
+  padding: 8px 16px;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.12s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* tooltip */
+.tooltip { position: relative; }
+.tooltip:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%);
+  background: #1a2a1e; border: 1px solid var(--border); color: var(--text2);
+  font-size: 0.6rem; padding: 5px 8px; border-radius: 2px;
+  white-space: nowrap; pointer-events: none; z-index: 100;
+}
+
+@media (max-width: 680px) {
+  .layout { grid-template-columns: 1fr; padding: 20px 14px; }
+  .col-left { grid-column: 1; padding-right: 0; border-right: none; border-bottom: 1px solid var(--border2); padding-bottom: 20px; }
+  .col-right { grid-column: 1; padding-left: 0; }
+  .header { flex-direction: column; align-items: flex-start; gap: 10px; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-title">
+      <h1>Range Equity</h1>
+      <p>Texas Hold'em · Range-vs-Range · Monte Carlo</p>
+    </div>
+    <div class="street-badge" id="street-badge">Pre-flop</div>
+  </div>
+
+  <!-- LEFT: YOUR HAND + BOARD -->
+  <div class="col-left">
+
+    <div class="panel">
+      <div class="panel-header">Your Hole Cards</div>
+      <div class="card-row" id="hand-slots">
+        <div class="card-slot" data-group="hand" data-index="0" onclick="openPicker(this)"><span class="plus-icon">+</span></div>
+        <div class="card-slot" data-group="hand" data-index="1" onclick="openPicker(this)"><span class="plus-icon">+</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        Board
+        <button style="font-size:0.58rem;background:none;border:none;color:var(--text3);cursor:pointer;letter-spacing:0.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;" onclick="clearBoard()">Clear Board</button>
+      </div>
+
+      <div style="font-size:0.58rem;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Flop</div>
+      <div class="card-row" style="margin-bottom:14px">
+        <div class="card-slot" data-group="community" data-index="0" onclick="openPicker(this)"><span class="plus-icon">+</span></div>
+        <div class="card-slot" data-group="community" data-index="1" onclick="openPicker(this)"><span class="plus-icon">+</span></div>
+        <div class="card-slot" data-group="community" data-index="2" onclick="openPicker(this)"><span class="plus-icon">+</span></div>
+      </div>
+
+      <div style="display:flex;gap:20px;">
+        <div>
+          <div style="font-size:0.58rem;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Turn</div>
+          <div class="card-row">
+            <div class="card-slot" data-group="community" data-index="3" onclick="openPicker(this)"><span class="plus-icon">+</span></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.58rem;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">River</div>
+          <div class="card-row">
+            <div class="card-slot" data-group="community" data-index="4" onclick="openPicker(this)"><span class="plus-icon">+</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">Players at Table</div>
+      <div class="players-wrap">
+        <div class="stepper">
+          <button onclick="adjPlayers(-1)">−</button>
+          <span id="player-count">2</span>
+          <button onclick="adjPlayers(1)">+</button>
+        </div>
+        <span style="font-size:0.75rem;color:var(--text2)" id="player-desc">Heads-up</span>
+      </div>
+    </div>
+
+    <button class="calc-btn" id="calc-btn" onclick="calculate()">Calculate Equity →</button>
+  </div>
+
+  <!-- RIGHT: OPPONENT RANGE + RESULTS -->
+  <div class="col-right">
+
+    <div class="panel">
+      <div class="panel-header">Opponent Range</div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('manual', this)">Manual</button>
+        <button class="tab-btn" onclick="switchTab('grid', this)">Grid</button>
+        <button class="tab-btn" onclick="switchTab('ai-range', this)">AI Translate</button>
+      </div>
+
+      <!-- MANUAL TAB -->
+      <div class="tab-content active" id="tab-manual">
+        <div class="range-block">
+          <div class="range-block-header">
+            <span class="range-label">Range Notation</span>
+            <span class="range-tag" id="combo-count-manual">0 combos</span>
+          </div>
+          <textarea class="range-input" id="range-input" rows="3"
+            placeholder="AA, KK, QQ, AKs, AKo, JJ+, AQs+"
+            oninput="onRangeInput()"></textarea>
+          <div class="range-error" id="range-error">Invalid range token</div>
+        </div>
+
+        <div style="font-size:0.62rem;color:var(--text3);margin-bottom:8px;letter-spacing:0.06em;">Presets</div>
+        <div class="presets">
+          <button class="preset-btn" onclick="setRange('AA, KK, QQ, JJ, TT, AKs, AKo')">UTG Tight</button>
+          <button class="preset-btn" onclick="setRange('99+, AJs+, AQo+, KQs')">UTG Standard</button>
+          <button class="preset-btn" onclick="setRange('77+, ATs+, AJo+, KQs, KJs+, QJs')">CO Open</button>
+          <button class="preset-btn" onclick="setRange('55+, A8s+, ATo+, KTs+, KJo+, QTs+, JTs, T9s')">BTN Wide</button>
+          <button class="preset-btn" onclick="setRange('22+, A2s+, A5o+, K9s+, KJo+, Q9s+, J9s+, T8s+, 97s+, 86s+, 75s+')">BTN Very Wide</button>
+          <button class="preset-btn" onclick="setRange('JJ+, AKs, AKo')">3-bet Tight</button>
+          <button class="preset-btn" onclick="setRange('AA, KK, QQ, JJ, TT, 99, 88, 77, 66, 55, 44, 33, 22, AKs, AQs, AJs, ATs, A9s, A8s, A7s, A6s, A5s, A4s, A3s, A2s, KQs, KJs, KTs, QJs, QTs, JTs, T9s, 98s, 87s, 76s, 65s, 54s')">Any Two</button>
+        </div>
+      </div>
+
+      <!-- GRID TAB -->
+      <div class="tab-content" id="tab-grid">
+        <div style="font-size:0.62rem;color:var(--text3);margin-bottom:8px;letter-spacing:0.06em;">Click cells to toggle. Diagonal=pairs, upper-right=suited, lower-left=offsuit.</div>
+        <div class="range-grid-wrap">
+          <div class="range-grid" id="range-grid"></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:10px;font-size:0.6rem;">
+          <span><span style="color:var(--gold)">■</span> Pairs</span>
+          <span><span style="color:var(--green)">■</span> Suited</span>
+          <span><span style="color:#f08888">■</span> Offsuit</span>
+          <span style="color:var(--text3);margin-left:auto" id="combo-count-grid">0 combos</span>
+        </div>
+      </div>
+
+      <!-- AI RANGE TAB -->
+      <div class="tab-content" id="tab-ai-range">
+        <div style="font-size:0.72rem;color:var(--text2);margin-bottom:10px;line-height:1.6;">
+          Describe the opponent. Claude generates their range.
+        </div>
+        <div class="ai-range-wrap">
+          <input class="ai-range-input" id="ai-range-input"
+            placeholder="e.g. tight UTG raiser, loose passive fish, 3-bet range..."
+            onkeydown="if(event.key==='Enter')translateRange()">
+          <button class="ai-translate-btn" onclick="translateRange()" id="ai-translate-btn">→ Generate</button>
+        </div>
+        <div id="ai-range-result" style="display:none;margin-top:10px;background:var(--surface2);border-left:2px solid var(--green);padding:10px 12px;border-radius:0 2px 2px 0;">
+          <div style="font-size:0.58rem;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">Generated Range</div>
+          <div id="ai-range-text" style="font-size:0.78rem;color:var(--green);font-weight:500;word-break:break-all;"></div>
+          <div id="ai-range-reasoning" style="font-size:0.68rem;color:var(--text2);margin-top:6px;line-height:1.6;"></div>
+          <button onclick="applyAIRange()" style="margin-top:8px;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;padding:5px 12px;border:1px solid var(--border);border-radius:2px;background:transparent;color:var(--gold);cursor:pointer;font-family:'JetBrains Mono',monospace;">Apply This Range</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="panel results-panel" id="results-panel">
+      <div class="panel-header">
+        Equity Results
+        <span id="sim-label" style="color:var(--text3)"></span>
+      </div>
+
+      <div class="equity-bar-outer">
+        <div class="eq-win" id="bar-win"></div>
+        <div class="eq-tie" id="bar-tie"></div>
+        <div class="eq-lose" id="bar-lose"></div>
+      </div>
+
+      <div class="stats-3">
+        <div class="stat-box"><div class="stat-num win" id="stat-win">—</div><div class="stat-lbl">Win</div></div>
+        <div class="stat-box"><div class="stat-num tie" id="stat-tie">—</div><div class="stat-lbl">Tie</div></div>
+        <div class="stat-box"><div class="stat-num lose" id="stat-lose">—</div><div class="stat-lbl">Lose</div></div>
+      </div>
+
+      <div class="hand-badge">
+        <div>
+          <div class="hand-name" id="my-hand-name">—</div>
+          <div class="hand-sub" id="my-hand-sub"></div>
+        </div>
+        <div id="outs-badge" style="text-align:right;font-size:0.68rem;color:var(--text3)"></div>
+      </div>
+
+      <div id="outs-list"></div>
+
+      <button class="ai-analysis-btn" id="ai-analysis-btn" onclick="getAnalysis()">
+        ✦ Get Strategic Analysis
+      </button>
+      <div class="ai-text" id="ai-text"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CARD PICKER -->
+<div class="overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="picker">
+    <h3>Pick Card</h3>
+    <div class="suit-row">
+      <button class="suit-btn" data-suit="s" onclick="pickSuit(this)">♠</button>
+      <button class="suit-btn" data-suit="h" onclick="pickSuit(this)" style="color:#e05252">♥</button>
+      <button class="suit-btn" data-suit="d" onclick="pickSuit(this)" style="color:#e05252">♦</button>
+      <button class="suit-btn" data-suit="c" onclick="pickSuit(this)">♣</button>
+    </div>
+    <div class="rank-grid" id="rank-grid"></div>
+    <div class="picker-actions">
+      <button class="btn btn-danger" onclick="removeCard()">Remove</button>
+      <button class="btn btn-ghost" onclick="closeOverlay()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// CARD ENGINE
+// card = rank*4 + suit  (rank 0-12=2..A, suit 0-3=s/h/d/c)
+// ═══════════════════════════════════════════════════
+const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
+const SUITS = ['s','h','d','c'];
+const SUIT_SYM = { s:'♠', h:'♥', d:'♦', c:'♣' };
+const HAND_NAMES = ['High Card','One Pair','Two Pair','Three of a Kind',
+  'Straight','Flush','Full House','Four of a Kind','Straight Flush','Royal Flush'];
+
+const cid = (r, s) => r*4+s;
+const crank = c => c>>2;
+const csuit = c => c&3;
+const cstr = c => RANKS[crank(c)] + SUITS[csuit(c)];
+
+// ═══════════════════════════════════════════════════
+// HAND EVALUATOR
+// ═══════════════════════════════════════════════════
+function bestHand(cards) {
+  const n = cards.length;
+  let best = -1;
+  for (let a=0;a<n-4;a++) for (let b=a+1;b<n-3;b++) for (let c=b+1;c<n-2;c++)
+    for (let d=c+1;d<n-1;d++) for (let e=d+1;e<n;e++) {
+      const s = score5([cards[a],cards[b],cards[c],cards[d],cards[e]]);
+      if (s > best) best = s;
+    }
+  return best;
+}
+
+function score5(h) {
+  const rs = h.map(crank).sort((a,b)=>b-a);
+  const ss = h.map(csuit);
+  const rc = new Array(13).fill(0);
+  for (const r of rs) rc[r]++;
+  const isF = ss.every(s=>s===ss[0]);
+  let isSt=false, stHi=-1;
+  const u = [...new Set(rs)].sort((a,b)=>b-a);
+  if (u.length===5) {
+    if (u[0]-u[4]===4) { isSt=true; stHi=u[0]; }
+    if (String(u)==='12,3,2,1,0') { isSt=true; stHi=3; }
+  }
+  const grps = [];
+  for (let r=12;r>=0;r--) if(rc[r]>0) grps.push([rc[r],r]);
+  grps.sort((a,b)=>b[0]-a[0]||b[1]-a[1]);
+  const cat = (() => {
+    if (isF && isSt) return stHi===12 ? 9 : 8;
+    if (grps[0][0]===4) return 7;
+    if (grps[0][0]===3 && grps[1]?.[0]===2) return 6;
+    if (isF) return 5;
+    if (isSt) return 4;
+    if (grps[0][0]===3) return 3;
+    if (grps[0][0]===2 && grps[1]?.[0]===2) return 2;
+    if (grps[0][0]===2) return 1;
+    return 0;
+  })();
+  let tb = isSt ? stHi : 0;
+  if (!isSt) for (const g of grps) tb = tb*13 + g[1];
+  return cat*1e8 + tb;
+}
+const handCat = s => Math.floor(s/1e8);
+const handName = s => HAND_NAMES[Math.min(handCat(s),9)];
+
+// ═══════════════════════════════════════════════════
+// RANGE PARSER
+//
+// Supports: AA, AKs, AKo, AQs+, 99+, ATo+
+//
+// The "+" suffix means:
+//   - For pairs (99+): 99 through AA
+//   - For suited/offsuit (AQs+): AQs through AKs (rank2 goes up toward rank1)
+//   - Without suffix (AKs): exactly that holding
+//
+// Expansion logic:
+//   Pair XX → C(4,2)=6 combos
+//   Suited XYs → 4 combos (one per suit)
+//   Offsuit XYo → 12 combos
+//   No suffix XY: if X==Y it's a pair, else suited+offsuit=16 combos
+// ═══════════════════════════════════════════════════
+
+function parseRange(str) {
+  // Returns array of card-pair combos: [[c1,c2], ...]
+  if (!str.trim()) return [];
+  const tokens = str.toUpperCase().split(/[\s,]+/).filter(Boolean);
+  const combos = new Set();
+  const errors = [];
+
+  for (const raw of tokens) {
+    try {
+      expandToken(raw, combos);
+    } catch(e) {
+      errors.push(raw);
+    }
+  }
+  return { combos: [...combos].map(k => k.split(',').map(Number)), errors };
+}
+
+function expandToken(token, out) {
+  // token like: AA, AKs, AKo, AQs+, 99+, KJo, JJ+
+  const plus = token.endsWith('+');
+  const t = plus ? token.slice(0,-1) : token;
+  const suited = t.endsWith('S');
+  const offsuit = t.endsWith('O');
+  const body = (suited||offsuit) ? t.slice(0,-1) : t;
+
+  if (body.length !== 2) throw new Error('bad token');
+
+  const r1 = RANKS.indexOf(body[0]);
+  const r2 = RANKS.indexOf(body[1]);
+  if (r1 < 0 || r2 < 0) throw new Error('bad rank');
+
+  const hi = Math.max(r1,r2);
+  const lo = Math.min(r1,r2);
+  const isPair = hi === lo;
+
+  if (isPair) {
+    // pair: generate from lo up to A (if +)
+    const start = lo;
+    const end = plus ? 12 : lo;
+    for (let r = start; r <= end; r++) {
+      for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++) {
+        addCombo(cid(r,s1), cid(r,s2), out);
+      }
+    }
+  } else {
+    // non-pair: hi=first card rank, lo=second card rank (lo < hi)
+    // + means lo increments toward hi-1
+    const startLo = lo;
+    const endLo = plus ? hi-1 : lo;
+    for (let lr = startLo; lr <= endLo; lr++) {
+      if (!offsuit) { // suited
+        for (let s=0;s<4;s++) addCombo(cid(hi,s), cid(lr,s), out);
+      }
+      if (!suited) { // offsuit
+        for (let s1=0;s1<4;s1++) for (let s2=0;s2<4;s2++) {
+          if (s1!==s2) addCombo(cid(hi,s1), cid(lr,s2), out);
+        }
+      }
+    }
+  }
+}
+
+function addCombo(c1, c2, out) {
+  const key = c1<c2 ? `${c1},${c2}` : `${c2},${c1}`;
+  out.add(key);
+}
+
+// Remove combos that conflict with known cards
+function filterCombos(combos, blockers) {
+  const blocked = new Set(blockers);
+  return combos.filter(([c1,c2]) => !blocked.has(c1) && !blocked.has(c2));
+}
+
+// ═══════════════════════════════════════════════════
+// RANGE EQUITY (Monte Carlo, range-vs-range)
+// ═══════════════════════════════════════════════════
+function calcRangeEquity(myHole, communityCards, opponentCombos, numPlayers, iterations=10000) {
+  const knownSet = new Set([...myHole, ...communityCards]);
+  const available = [];
+  for (let i=0;i<52;i++) if (!knownSet.has(i)) available.push(i);
+
+  const needed = 5 - communityCards.length;
+  const extraOpps = numPlayers - 2; // players beyond you + one main opponent
+
+  let wins=0, ties=0, losses=0;
+
+  for (let iter=0; iter<iterations; iter++) {
+    // Sample one combo from opponent range (blocking with known+drawn cards)
+    const validOpp = filterCombos(opponentCombos, [...knownSet]);
+    if (!validOpp.length) { wins++; continue; } // degenerate: no valid opp combos → we win
+    const oppHole = validOpp[(Math.random()*validOpp.length)|0];
+
+    // Build used set
+    const used = new Set([...knownSet, ...oppHole]);
+
+    // Shuffle remaining deck
+    const d = available.filter(c => !used.has(c));
+    for (let i=d.length-1;i>0;i--) {
+      const j=(Math.random()*(i+1))|0; [d[i],d[j]]=[d[j],d[i]];
+    }
+
+    let idx=0;
+    const board = [...communityCards];
+    for (let i=0;i<needed;i++) board.push(d[idx++]);
+
+    const myScore = bestHand([...myHole, ...board]);
+    const oppScore = bestHand([...oppHole, ...board]);
+
+    // Extra random players (not ranged)
+    let bestExtra = -1;
+    for (let p=0;p<extraOpps;p++) {
+      const eh = [d[idx++], d[idx++]];
+      const es = bestHand([...eh, ...board]);
+      if (es > bestExtra) bestExtra = es;
+    }
+
+    const maxOpp = Math.max(oppScore, bestExtra);
+    if (myScore > maxOpp) wins++;
+    else if (myScore === maxOpp) ties++;
+    else losses++;
+  }
+  return { win:wins/iterations, tie:ties/iterations, lose:losses/iterations };
+}
+
+// ═══════════════════════════════════════════════════
+// OUTS
+// ═══════════════════════════════════════════════════
+function calcOuts(myHole, board) {
+  const known = new Set([...myHole, ...board]);
+  const cur = Math.floor(bestHand([...myHole,...board])/1e8);
+  const result = {};
+  for (let c=0;c<52;c++) {
+    if (known.has(c)) continue;
+    const test = [...myHole,...board,c];
+    const cat = Math.floor(bestHand(test)/1e8);
+    if (cat > cur) {
+      const n = HAND_NAMES[cat];
+      result[n] = (result[n]||0)+1;
+    }
+  }
+  return result;
+}
+
+// ═══════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════
+const S = {
+  hand: [null,null],
+  board: [null,null,null,null,null],
+  players: 2,
+  currentSlot: null,
+  pickerSuit: null,
+  activeTab: 'manual',
+  gridState: {}, // "R1R2": 'p'|'s'|'o'|null
+  lastAIRange: null
+};
+
+function getKnownCards() {
+  return [...S.hand,...S.board].filter(c=>c!==null);
+}
+
+// ═══════════════════════════════════════════════════
+// RANGE INPUT
+// ═══════════════════════════════════════════════════
+function onRangeInput() {
+  const str = document.getElementById('range-input').value;
+  const {combos, errors} = parseRange(str);
+  const errEl = document.getElementById('range-error');
+  if (errors.length) {
+    errEl.style.display = 'block';
+    errEl.textContent = `Unknown tokens: ${errors.join(', ')}`;
+  } else {
+    errEl.style.display = 'none';
+  }
+  document.getElementById('combo-count-manual').textContent = combos.length + ' combos';
+  syncGridFromText();
+}
+
+function setRange(str) {
+  document.getElementById('range-input').value = str;
+  onRangeInput();
+}
+
+function getRangeCombos() {
+  if (S.activeTab === 'grid') {
+    return getGridCombos();
+  }
+  const str = document.getElementById('range-input').value;
+  const {combos} = parseRange(str);
+  return combos;
+}
+
+// ═══════════════════════════════════════════════════
+// RANGE GRID (13×13 hand matrix)
+// Rows/cols = ranks A down to 2
+// Above diagonal = suited, below = offsuit, diagonal = pairs
+// ═══════════════════════════════════════════════════
+const GRID_RANKS = [...RANKS].reverse(); // A,K,Q,...,2
+
+function initRangeGrid() {
+  const grid = document.getElementById('range-grid');
+  grid.innerHTML = '';
+  for (let ri=0;ri<13;ri++) {
+    for (let ci=0;ci<13;ci++) {
+      const r1idx = 12-ri; // rank index (0-12)
+      const r2idx = 12-ci;
+      const hi = Math.max(r1idx,r2idx);
+      const lo = Math.min(r1idx,r2idx);
+      const cell = document.createElement('div');
+      cell.className = 'rg-cell';
+
+      let label, key, type;
+      if (ri===ci) { label=RANKS[r1idx]+RANKS[r2idx]; type='p'; }
+      else if (ri>ci) { label=RANKS[hi]+RANKS[lo]+'o'; type='o'; } // below diag
+      else { label=RANKS[hi]+RANKS[lo]+'s'; type='s'; } // above diag
+
+      cell.textContent = label;
+      cell.dataset.hi = hi;
+      cell.dataset.lo = lo;
+      cell.dataset.type = type;
+      cell.dataset.key = `${hi},${lo},${type}`;
+      cell.onclick = () => toggleGridCell(cell);
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function toggleGridCell(cell) {
+  const key = cell.dataset.key;
+  const type = cell.dataset.type;
+  const active = S.gridState[key];
+  S.gridState[key] = active ? null : true;
+  updateGridCell(cell);
+  const combos = getGridCombos();
+  document.getElementById('combo-count-grid').textContent = combos.length + ' combos';
+}
+
+function updateGridCell(cell) {
+  const key = cell.dataset.key;
+  const type = cell.dataset.type;
+  const active = S.gridState[key];
+  cell.classList.remove('active-pair','active-suited','active-offsuit');
+  if (active) {
+    if (type==='p') cell.classList.add('active-pair');
+    else if (type==='s') cell.classList.add('active-suited');
+    else cell.classList.add('active-offsuit');
+  }
+}
+
+function getGridCombos() {
+  const out = new Set();
+  for (const [key, active] of Object.entries(S.gridState)) {
+    if (!active) continue;
+    const [hi,lo,type] = key.split(',');
+    const hir=parseInt(hi), lor=parseInt(lo);
+    if (type==='p') {
+      for (let s1=0;s1<4;s1++) for (let s2=s1+1;s2<4;s2++)
+        addCombo(cid(hir,s1),cid(hir,s2),out);
+    } else if (type==='s') {
+      for (let s=0;s<4;s++) addCombo(cid(hir,s),cid(lor,s),out);
+    } else {
+      for (let s1=0;s1<4;s1++) for (let s2=0;s2<4;s2++)
+        if (s1!==s2) addCombo(cid(hir,s1),cid(lor,s2),out);
+    }
+  }
+  return [...out].map(k=>k.split(',').map(Number));
+}
+
+function syncGridFromText() {
+  // Reset grid state
+  S.gridState = {};
+  const str = document.getElementById('range-input').value;
+  const {combos} = parseRange(str);
+  // Convert combos back to grid keys (approximate — marks cells)
+  for (const [c1,c2] of combos) {
+    const r1=crank(c1), r2=crank(c2), s1=csuit(c1), s2=csuit(c2);
+    const hi=Math.max(r1,r2), lo=Math.min(r1,r2);
+    let type;
+    if (hi===lo) type='p';
+    else if (s1===s2) type='s';
+    else type='o';
+    S.gridState[`${hi},${lo},${type}`] = true;
+  }
+  document.querySelectorAll('.rg-cell').forEach(cell => updateGridCell(cell));
+  document.getElementById('combo-count-grid').textContent = combos.length + ' combos';
+}
+
+// ═══════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════
+function switchTab(name, btn) {
+  S.activeTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════
+// AI RANGE TRANSLATOR
+// ═══════════════════════════════════════════════════
+async function translateRange() {
+  const desc = document.getElementById('ai-range-input').value.trim();
+  if (!desc) return;
+  const btn = document.getElementById('ai-translate-btn');
+  const resEl = document.getElementById('ai-range-result');
+  btn.disabled = true;
+  btn.textContent = '...';
+  resEl.style.display = 'block';
+  document.getElementById('ai-range-text').textContent = 'Generating...';
+  document.getElementById('ai-range-reasoning').textContent = '';
+
+  const prompt = `You are a poker range expert. Convert this player description into a precise hand range.
+
+Description: "${desc}"
+
+Return ONLY valid JSON in this exact format, nothing else:
+{
+  "range": "AA, KK, QQ, AKs, AKo",
+  "reasoning": "One sentence explaining the range."
+}
+
+Range notation rules:
+- Pairs: AA, KK, 99, 22 etc
+- Suited: AKs, AQs, KQs etc  
+- Offsuit: AKo, AQo, KQo etc
+- Plus suffix: 99+ means 99,TT,JJ,QQ,KK,AA. AJs+ means AJs,AQs,AKs
+- Valid ranks: 2,3,4,5,6,7,8,9,T,J,Q,K,A
+- Only include hands that make strategic sense for the description.`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await response.json();
+    const raw = data.content?.map(b=>b.text||'').join('') || '';
+    const cleaned = raw.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(cleaned);
+    S.lastAIRange = parsed.range;
+    document.getElementById('ai-range-text').textContent = parsed.range;
+    document.getElementById('ai-range-reasoning').textContent = parsed.reasoning || '';
+    // Validate it
+    const {combos, errors} = parseRange(parsed.range);
+    if (errors.length) {
+      document.getElementById('ai-range-reasoning').textContent += ` (${errors.length} tokens unrecognized — will be skipped)`;
+    }
+  } catch(e) {
+    document.getElementById('ai-range-text').textContent = 'Failed. Check network.';
+  }
+  btn.disabled = false;
+  btn.textContent = '→ Generate';
+}
+
+function applyAIRange() {
+  if (!S.lastAIRange) return;
+  setRange(S.lastAIRange);
+  // Switch to manual tab to show it
+  document.querySelectorAll('.tab-btn')[0].click();
+}
+
+// ═══════════════════════════════════════════════════
+// CARD PICKER
+// ═══════════════════════════════════════════════════
+function openPicker(el) {
+  S.currentSlot = el;
+  S.pickerSuit = null;
+  document.querySelectorAll('.suit-btn').forEach(b=>b.classList.remove('selected'));
+  buildRankGrid();
+  document.getElementById('overlay').classList.add('open');
+}
+
+function overlayClick(e) {
+  if (e.target===document.getElementById('overlay')) closeOverlay();
+}
+
+function closeOverlay() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function pickSuit(btn) {
+  document.querySelectorAll('.suit-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  S.pickerSuit = btn.dataset.suit;
+  buildRankGrid();
+}
+
+function buildRankGrid() {
+  const grid = document.getElementById('rank-grid');
+  const used = new Set(getKnownCards());
+  grid.innerHTML = '';
+  for (let r=12;r>=0;r--) {
+    const btn = document.createElement('button');
+    btn.className = 'rank-btn';
+    btn.textContent = RANKS[r];
+    if (!S.pickerSuit) {
+      btn.classList.add('no-suit');
+    } else {
+      const c = cid(r, SUITS.indexOf(S.pickerSuit));
+      if (used.has(c)) btn.classList.add('taken');
+      else btn.onclick = () => commitCard(r);
+    }
+    grid.appendChild(btn);
+  }
+}
+
+function commitCard(rank) {
+  if (!S.currentSlot || !S.pickerSuit) return;
+  const c = cid(rank, SUITS.indexOf(S.pickerSuit));
+  const g = S.currentSlot.dataset.group;
+  const i = parseInt(S.currentSlot.dataset.index);
+  if (g==='hand') S.hand[i]=c; else S.board[i]=c;
+  renderSlot(S.currentSlot, c);
+  closeOverlay();
+  updateStreet();
+}
+
+function removeCard() {
+  if (!S.currentSlot) return;
+  const g = S.currentSlot.dataset.group;
+  const i = parseInt(S.currentSlot.dataset.index);
+  if (g==='hand') S.hand[i]=null; else S.board[i]=null;
+  renderSlot(S.currentSlot, null);
+  closeOverlay();
+  updateStreet();
+}
+
+function renderSlot(el, c) {
+  if (c===null) {
+    el.classList.remove('filled','c-red','c-black');
+    el.innerHTML = '<span class="plus-icon">+</span>';
+    return;
+  }
+  const s = csuit(c);
+  const isRed = s===1||s===2;
+  el.classList.add('filled');
+  el.classList.toggle('c-red', isRed);
+  el.classList.toggle('c-black', !isRed);
+  el.innerHTML = `<div class="card-inner"><span class="c-rank">${RANKS[crank(c)]}</span><span class="c-suit">${SUIT_SYM[SUITS[s]]}</span></div>`;
+}
+
+function clearBoard() {
+  S.board = [null,null,null,null,null];
+  document.querySelectorAll('[data-group="community"]').forEach(el=>renderSlot(el,null));
+  updateStreet();
+}
+
+function updateStreet() {
+  const n = S.board.filter(c=>c!==null).length;
+  const labels = {0:'Pre-flop',3:'Flop',4:'Turn',5:'River'};
+  const key = n>=3 ? (n>=5?5:n) : 0;
+  document.getElementById('street-badge').textContent = labels[key]||'Pre-flop';
+}
+
+// ═══════════════════════════════════════════════════
+// PLAYERS
+// ═══════════════════════════════════════════════════
+function adjPlayers(d) {
+  S.players = Math.max(2,Math.min(9,S.players+d));
+  document.getElementById('player-count').textContent = S.players;
+  const desc = ['','','Heads-up','3-way','4-handed','5-handed','6-handed','7-handed','8-handed','9-handed'];
+  document.getElementById('player-desc').textContent = desc[S.players]||`${S.players} players`;
+}
+
+// ═══════════════════════════════════════════════════
+// CALCULATE
+// ═══════════════════════════════════════════════════
+function calculate() {
+  const hole = S.hand.filter(c=>c!==null);
+  if (hole.length < 2) { alert('Select both hole cards.'); return; }
+
+  const oppCombos = getRangeCombos();
+  if (oppCombos.length === 0) { alert('Enter an opponent range first.'); return; }
+
+  const board = S.board.filter(c=>c!==null);
+  const btn = document.getElementById('calc-btn');
+  btn.disabled = true;
+  btn.textContent = 'Simulating...';
+
+  setTimeout(() => {
+    const iters = board.length >= 4 ? 30000 : 15000;
+    const eq = calcRangeEquity(hole, board, oppCombos, S.players, iters);
+
+    // Bar
+    document.getElementById('bar-win').style.width = (eq.win*100)+'%';
+    document.getElementById('bar-win').textContent = eq.win > 0.12 ? (eq.win*100).toFixed(1)+'%' : '';
+    document.getElementById('bar-tie').style.width = (eq.tie*100)+'%';
+    document.getElementById('bar-lose').style.width = (eq.lose*100)+'%';
+
+    // Stats
+    document.getElementById('stat-win').textContent = (eq.win*100).toFixed(1)+'%';
+    document.getElementById('stat-tie').textContent = (eq.tie*100).toFixed(1)+'%';
+    document.getElementById('stat-lose').textContent = (eq.lose*100).toFixed(1)+'%';
+    document.getElementById('sim-label').textContent = iters.toLocaleString()+' sims · '+oppCombos.length+' opp combos';
+
+    // Hand name
+    const all = [...hole,...board];
+    const sc = all.length>=5 ? bestHand(all) : score5(all.length===2?[...all,...[0,1,2]].slice(0,5):all);
+    document.getElementById('my-hand-name').textContent = all.length >= 5 ? handName(bestHand(all)) : '(incomplete board)';
+    document.getElementById('my-hand-sub').textContent = hole.map(cstr).join(' ') + (board.length ? ' on '+board.map(cstr).join(' ') : '');
+
+    // Outs
+    const outsEl = document.getElementById('outs-badge');
+    const outsList = document.getElementById('outs-list');
+    if (board.length > 0 && board.length < 5) {
+      const outs = calcOuts(hole, board);
+      const total = Object.values(outs).reduce((a,b)=>a+b,0);
+      outsEl.textContent = total + ' outs';
+      const remaining = 52 - hole.length - board.length;
+      let html = '<div class="outs-list">';
+      for (const [n,cnt] of Object.entries(outs).sort((a,b)=>b[1]-a[1])) {
+        html += `<div class="out-item"><span class="out-name">${n}</span><span class="out-val">${cnt} (${(cnt/remaining*100).toFixed(1)}%)</span></div>`;
+      }
+      html += '</div>';
+      outsList.innerHTML = html;
+    } else {
+      outsEl.textContent = '';
+      outsList.innerHTML = '';
+    }
+
+    document.getElementById('results-panel').classList.add('visible');
+    document.getElementById('ai-text').classList.remove('visible');
+    document.getElementById('ai-text').textContent = '';
+    document.getElementById('ai-analysis-btn').disabled = false;
+    document.getElementById('ai-analysis-btn').textContent = '✦ Get Strategic Analysis';
+
+    btn.disabled = false;
+    btn.textContent = 'Calculate Equity →';
+  }, 30);
+}
+
+// ═══════════════════════════════════════════════════
+// AI STRATEGIC ANALYSIS
+// ═══════════════════════════════════════════════════
+async function getAnalysis() {
+  const btn = document.getElementById('ai-analysis-btn');
+  const out = document.getElementById('ai-text');
+  btn.disabled = true;
+  btn.textContent = '✦ Analyzing...';
+  out.textContent = 'Thinking...';
+  out.classList.add('visible','thinking');
+
+  const hole = S.hand.filter(c=>c!==null);
+  const board = S.board.filter(c=>c!==null);
+  const oppRange = document.getElementById('range-input').value || '[grid selection]';
+  const win = document.getElementById('stat-win').textContent;
+  const tie = document.getElementById('stat-tie').textContent;
+  const outs = board.length < 5 ? calcOuts(hole, board) : {};
+  const totalOuts = Object.values(outs).reduce((a,b)=>a+b,0);
+  const handN = board.length >= 5 ? handName(bestHand([...hole,...board])) : '(incomplete board)';
+  const street = ['Pre-flop','Pre-flop','Pre-flop','Flop','Turn','River'][board.length];
+
+  const prompt = `You are a GTO-aware poker coach. Be specific, strategic, and concise (4-5 sentences max).
+
+Situation:
+- My hand: ${hole.map(cstr).join(' ')}
+- Board: ${board.length ? board.map(cstr).join(' ') : 'none (pre-flop)'}
+- Street: ${street}
+- My made hand: ${handN}
+- My equity vs opponent range: Win ${win}, Tie ${tie}
+- Opponent's range: ${oppRange}
+- Outs to improve: ${totalOuts} (${Object.entries(outs).map(([k,v])=>`${v} to ${k}`).join(', ')||'none'})
+- Players: ${S.players}
+
+Analyze: (1) How does my hand interact with their range? (2) What's my range advantage or disadvantage on this board texture? (3) Concrete action recommendation with sizing rationale. Reference their specific range.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.map(b=>b.text||'').join('') || '';
+    out.classList.remove('thinking');
+    out.textContent = text;
+    btn.textContent = '✦ Re-analyze';
+    btn.disabled = false;
+  } catch(e) {
+    out.classList.remove('thinking');
+    out.textContent = 'Analysis failed.';
+    btn.textContent = '✦ Try Again';
+    btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+initRangeGrid();
+adjPlayers(0);
+updateStreet();
+</script>
+</body>
+</html>

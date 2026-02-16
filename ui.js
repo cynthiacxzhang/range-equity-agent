@@ -88,10 +88,48 @@ function initRangeGrid() {
       cell.dataset.lo = lo;
       cell.dataset.type = type;
       cell.dataset.key = `${hi},${lo},${type}`;
-      cell.onclick = () => toggleGridCell(cell);
       grid.appendChild(cell);
     }
   }
+
+  // drag to select/deselect across multiple cells
+  let dragging = false;
+  let dragMode = null; // true = turning on, false = turning off
+
+  grid.addEventListener('mousedown', (e) => {
+    const cell = e.target.closest('.rg-cell');
+    if (!cell) return;
+    e.preventDefault();
+    dragging = true;
+    // first cell decides if we're selecting or deselecting
+    dragMode = !S.gridState[cell.dataset.key];
+    applyDragToCell(cell);
+  });
+
+  grid.addEventListener('mouseover', (e) => {
+    if (!dragging) return;
+    const cell = e.target.closest('.rg-cell');
+    if (cell) applyDragToCell(cell);
+  });
+
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+    dragMode = null;
+  });
+
+  // also keep click working for single taps
+  grid.addEventListener('click', (e) => {
+    const cell = e.target.closest('.rg-cell');
+    if (cell) toggleGridCell(cell);
+  });
+}
+
+// applies the current drag mode (select or deselect) to one cell
+function applyDragToCell(cell) {
+  const key = cell.dataset.key;
+  S.gridState[key] = dragMode ? true : null;
+  updateGridCell(cell);
+  updateGridComboCount();
 }
 
 function toggleGridCell(cell) {
@@ -99,6 +137,10 @@ function toggleGridCell(cell) {
   const active = S.gridState[key];
   S.gridState[key] = active ? null : true;
   updateGridCell(cell);
+  updateGridComboCount();
+}
+
+function updateGridComboCount() {
   const combos = getGridCombos();
   document.getElementById('combo-count-grid').textContent = combos.length + ' combos';
 }

@@ -306,6 +306,7 @@ body {
   color: var(--text3);
   user-select: none;
 }
+.range-grid { -webkit-user-select: none; user-select: none; }
 .rg-cell:hover { border-color: var(--gold); color: var(--text); }
 .rg-cell.active-pair { background: rgba(212,168,67,0.25); color: var(--gold); border-color: rgba(212,168,67,0.4); }
 .rg-cell.active-suited { background: rgba(52,201,122,0.18); color: var(--green); border-color: rgba(52,201,122,0.3); }

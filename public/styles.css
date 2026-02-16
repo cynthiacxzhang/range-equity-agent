@@ -566,6 +566,117 @@ body {
   white-space: nowrap; pointer-events: none; z-index: 100;
 }
 
+/* POT ODDS / EV PANEL */
+.pot-odds-panel { display: none; }
+.pot-odds-panel.visible { display: block; }
+
+.pot-odds-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pot-odds-field label {
+  display: block;
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 5px;
+}
+
+.pot-odds-field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+.pot-odds-field input:focus { border-color: var(--gold); }
+.pot-odds-field input::placeholder { color: var(--text3); }
+
+.decision-badge {
+  text-align: center;
+  padding: 10px;
+  border-radius: 3px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.decision-badge.ev-positive {
+  background: rgba(52,201,122,0.12);
+  border: 1px solid rgba(52,201,122,0.3);
+  color: var(--green);
+}
+.decision-badge.ev-negative {
+  background: rgba(224,82,82,0.12);
+  border: 1px solid rgba(224,82,82,0.3);
+  color: var(--red);
+}
+
+/* SAVED RANGES */
+.saved-range-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  font-size: 0.68rem;
+}
+
+.saved-range-item .sr-name {
+  color: var(--gold);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.saved-range-item .sr-preview {
+  flex: 1;
+  color: var(--text3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-range-item button {
+  background: none;
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 2px;
+  transition: all 0.1s;
+}
+
+.saved-range-item .sr-load {
+  color: var(--green);
+  border: 1px solid rgba(52,201,122,0.3);
+}
+.saved-range-item .sr-load:hover {
+  background: rgba(52,201,122,0.1);
+}
+
+.saved-range-item .sr-delete {
+  color: var(--red);
+  border: 1px solid rgba(224,82,82,0.3);
+}
+.saved-range-item .sr-delete:hover {
+  background: rgba(224,82,82,0.1);
+}
+
 @media (max-width: 680px) {
   .layout { grid-template-columns: 1fr; padding: 20px 14px; }
   .col-left { grid-column: 1; padding-right: 0; border-right: none; border-bottom: 1px solid var(--border2); padding-bottom: 20px; }

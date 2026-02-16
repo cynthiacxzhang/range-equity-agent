@@ -1,10 +1,22 @@
 import {
   RANKS, SUITS, SUIT_SYM, HAND_NAMES,
   cid, crank, csuit, cstr,
-  bestHand, score5, handName,
-  parseRange, addCombo, filterCombos,
-  calcRangeEquity, calcOuts
+  bestHand, handName,
+  parseRange, addCombo,
+  calcOuts
 } from './engine.js';
+
+// ═══════════════════════════════════════════════════
+// WEB WORKER for Monte Carlo simulation
+// ═══════════════════════════════════════════════════
+let worker = null;
+
+function getWorker() {
+  if (!worker) {
+    worker = new Worker('./worker.js', { type: 'module' });
+  }
+  return worker;
+}
 
 // ═══════════════════════════════════════════════════
 // APP STATE
@@ -305,7 +317,7 @@ function adjPlayers(d) {
 }
 
 // ═══════════════════════════════════════════════════
-// CALCULATE
+// CALCULATE (via Web Worker)
 // ═══════════════════════════════════════════════════
 function calculate() {
   const hole = S.hand.filter(c=>c!==null);
@@ -317,53 +329,86 @@ function calculate() {
   const board = S.board.filter(c=>c!==null);
   const btn = document.getElementById('calc-btn');
   btn.disabled = true;
-  btn.textContent = 'Simulating...';
 
-  setTimeout(() => {
-    const iters = board.length >= 4 ? 30000 : 15000;
-    const eq = calcRangeEquity(hole, board, oppCombos, S.players, iters);
+  const iters = board.length >= 4 ? 50000 : 25000;
+  btn.textContent = `Simulating 0/${(iters/1000).toFixed(0)}k...`;
 
-    document.getElementById('bar-win').style.width = (eq.win*100)+'%';
-    document.getElementById('bar-win').textContent = eq.win > 0.12 ? (eq.win*100).toFixed(1)+'%' : '';
-    document.getElementById('bar-tie').style.width = (eq.tie*100)+'%';
-    document.getElementById('bar-lose').style.width = (eq.lose*100)+'%';
+  // Show results panel immediately with placeholder
+  document.getElementById('results-panel').classList.add('visible');
+  document.getElementById('pot-odds-panel').classList.add('visible');
+  document.getElementById('ai-text').classList.remove('visible');
+  document.getElementById('ai-text').textContent = '';
 
-    document.getElementById('stat-win').textContent = (eq.win*100).toFixed(1)+'%';
-    document.getElementById('stat-tie').textContent = (eq.tie*100).toFixed(1)+'%';
-    document.getElementById('stat-lose').textContent = (eq.lose*100).toFixed(1)+'%';
-    document.getElementById('sim-label').textContent = iters.toLocaleString()+' sims · '+oppCombos.length+' opp combos';
+  const w = getWorker();
 
-    const all = [...hole,...board];
-    document.getElementById('my-hand-name').textContent = all.length >= 5 ? handName(bestHand(all)) : '(incomplete board)';
-    document.getElementById('my-hand-sub').textContent = hole.map(cstr).join(' ') + (board.length ? ' on '+board.map(cstr).join(' ') : '');
+  w.onmessage = (e) => {
+    const { type } = e.data;
 
-    const outsEl = document.getElementById('outs-badge');
-    const outsList = document.getElementById('outs-list');
-    if (board.length > 0 && board.length < 5) {
-      const outs = calcOuts(hole, board);
-      const total = Object.values(outs).reduce((a,b)=>a+b,0);
-      outsEl.textContent = total + ' outs';
-      const remaining = 52 - hole.length - board.length;
-      let html = '<div class="outs-list">';
-      for (const [n,cnt] of Object.entries(outs).sort((a,b)=>b[1]-a[1])) {
-        html += `<div class="out-item"><span class="out-name">${n}</span><span class="out-val">${cnt} (${(cnt/remaining*100).toFixed(1)}%)</span></div>`;
-      }
-      html += '</div>';
-      outsList.innerHTML = html;
-    } else {
-      outsEl.textContent = '';
-      outsList.innerHTML = '';
+    if (type === 'progress') {
+      const { done, total, partial } = e.data;
+      const pct = ((done/total)*100)|0;
+      btn.textContent = `Simulating ${(done/1000).toFixed(0)}k/${(total/1000).toFixed(0)}k...`;
+
+      // Update bars with partial results for live feel
+      document.getElementById('bar-win').style.width = (partial.win*100)+'%';
+      document.getElementById('bar-win').textContent = partial.win > 0.12 ? (partial.win*100).toFixed(1)+'%' : '';
+      document.getElementById('bar-tie').style.width = (partial.tie*100)+'%';
+      document.getElementById('bar-lose').style.width = (partial.lose*100)+'%';
+
+      document.getElementById('stat-win').textContent = (partial.win*100).toFixed(1)+'%';
+      document.getElementById('stat-tie').textContent = (partial.tie*100).toFixed(1)+'%';
+      document.getElementById('stat-lose').textContent = (partial.lose*100).toFixed(1)+'%';
     }
 
-    document.getElementById('results-panel').classList.add('visible');
-    document.getElementById('ai-text').classList.remove('visible');
-    document.getElementById('ai-text').textContent = '';
-    document.getElementById('ai-analysis-btn').disabled = false;
-    document.getElementById('ai-analysis-btn').textContent = '✦ Get Strategic Analysis';
+    if (type === 'result') {
+      const { eq, myHandName, outs, iterations } = e.data;
 
-    btn.disabled = false;
-    btn.textContent = 'Calculate Equity →';
-  }, 30);
+      // Final bar update
+      document.getElementById('bar-win').style.width = (eq.win*100)+'%';
+      document.getElementById('bar-win').textContent = eq.win > 0.12 ? (eq.win*100).toFixed(1)+'%' : '';
+      document.getElementById('bar-tie').style.width = (eq.tie*100)+'%';
+      document.getElementById('bar-lose').style.width = (eq.lose*100)+'%';
+
+      document.getElementById('stat-win').textContent = (eq.win*100).toFixed(1)+'%';
+      document.getElementById('stat-tie').textContent = (eq.tie*100).toFixed(1)+'%';
+      document.getElementById('stat-lose').textContent = (eq.lose*100).toFixed(1)+'%';
+      document.getElementById('sim-label').textContent = iterations.toLocaleString()+' sims · '+oppCombos.length+' opp combos';
+
+      document.getElementById('my-hand-name').textContent = myHandName;
+      document.getElementById('my-hand-sub').textContent = hole.map(cstr).join(' ') + (board.length ? ' on '+board.map(cstr).join(' ') : '');
+
+      // Outs
+      const outsEl = document.getElementById('outs-badge');
+      const outsList = document.getElementById('outs-list');
+      if (Object.keys(outs).length > 0) {
+        const total = Object.values(outs).reduce((a,b)=>a+b,0);
+        outsEl.textContent = total + ' outs';
+        const remaining = 52 - hole.length - board.length;
+        let html = '<div class="outs-list">';
+        for (const [n,cnt] of Object.entries(outs).sort((a,b)=>b[1]-a[1])) {
+          html += `<div class="out-item"><span class="out-name">${n}</span><span class="out-val">${cnt} (${(cnt/remaining*100).toFixed(1)}%)</span></div>`;
+        }
+        html += '</div>';
+        outsList.innerHTML = html;
+      } else {
+        outsEl.textContent = '';
+        outsList.innerHTML = '';
+      }
+
+      document.getElementById('ai-analysis-btn').disabled = false;
+      document.getElementById('ai-analysis-btn').textContent = '✦ Get Strategic Analysis';
+
+      updatePotOdds();
+
+      btn.disabled = false;
+      btn.textContent = 'Calculate Equity →';
+    }
+  };
+
+  w.postMessage({
+    type: 'calc-equity',
+    payload: { hole, board, oppCombos, numPlayers: S.players, iterations: iters }
+  });
 }
 
 // ═══════════════════════════════════════════════════
@@ -417,6 +462,118 @@ async function getAnalysis() {
     btn.textContent = '✦ Try Again';
     btn.disabled = false;
   }
+}
+
+// ═══════════════════════════════════════════════════
+// POT ODDS / EV CALCULATOR
+// ═══════════════════════════════════════════════════
+function updatePotOdds() {
+  const potSize = parseFloat(document.getElementById('pot-size').value);
+  const betToCall = parseFloat(document.getElementById('bet-to-call').value);
+  const resultsEl = document.getElementById('pot-odds-results');
+
+  if (!potSize || !betToCall || potSize <= 0 || betToCall <= 0) {
+    resultsEl.style.display = 'none';
+    return;
+  }
+
+  const winText = document.getElementById('stat-win').textContent;
+  const loseText = document.getElementById('stat-lose').textContent;
+  const winPct = parseFloat(winText) / 100;
+  const losePct = parseFloat(loseText) / 100;
+
+  if (isNaN(winPct) || isNaN(losePct)) {
+    resultsEl.style.display = 'none';
+    return;
+  }
+
+  const potOdds = betToCall / (potSize + betToCall);
+  const evCall = (winPct * (potSize + betToCall)) - (losePct * betToCall);
+  const isPositiveEV = winPct > potOdds;
+
+  // Pot odds as ratio (e.g. 2:1)
+  const ratioLeft = ((potSize + betToCall) / betToCall).toFixed(1);
+
+  document.getElementById('pot-odds-pct').textContent = (potOdds * 100).toFixed(1) + '%';
+  document.getElementById('required-equity').textContent = (potOdds * 100).toFixed(1) + '%';
+  document.getElementById('ev-call').textContent = (evCall >= 0 ? '+' : '') + evCall.toFixed(2);
+  document.getElementById('ev-call').style.color = evCall >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('pot-odds-ratio').textContent = `Ratio: ${ratioLeft} : 1 · You need ${(potOdds * 100).toFixed(1)}% equity to break even`;
+
+  const badge = document.getElementById('decision-badge');
+  if (isPositiveEV) {
+    badge.className = 'decision-badge ev-positive';
+    badge.textContent = '+EV Call';
+  } else {
+    badge.className = 'decision-badge ev-negative';
+    badge.textContent = '−EV Fold';
+  }
+
+  resultsEl.style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════
+// SAVE / LOAD RANGES
+// ═══════════════════════════════════════════════════
+function getSavedRanges() {
+  try {
+    return JSON.parse(localStorage.getItem('poker-saved-ranges')) || [];
+  } catch { return []; }
+}
+
+function saveSavedRanges(ranges) {
+  localStorage.setItem('poker-saved-ranges', JSON.stringify(ranges));
+}
+
+function saveRange() {
+  const range = document.getElementById('range-input').value.trim();
+  if (!range) { alert('Enter a range first.'); return; }
+  const name = prompt('Name this range:');
+  if (!name) return;
+  const ranges = getSavedRanges();
+  ranges.push({ name, range, timestamp: Date.now() });
+  saveSavedRanges(ranges);
+  loadSavedRanges();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function loadSavedRanges() {
+  const ranges = getSavedRanges();
+  const list = document.getElementById('saved-ranges-list');
+  if (ranges.length === 0) {
+    list.innerHTML = '<div style="font-size:0.62rem;color:var(--text3);padding:4px 0;">No saved ranges yet.</div>';
+    return;
+  }
+  list.innerHTML = ranges.map((r, i) =>
+    `<div class="saved-range-item">
+      <span class="sr-name">${escHtml(r.name)}</span>
+      <span class="sr-preview">${escHtml(r.range)}</span>
+      <button class="sr-load" data-sr-index="${i}">Load</button>
+      <button class="sr-delete" data-sr-index="${i}">×</button>
+    </div>`
+  ).join('');
+
+  list.querySelectorAll('.sr-load').forEach(btn => {
+    btn.addEventListener('click', () => applySavedRange(parseInt(btn.dataset.srIndex)));
+  });
+  list.querySelectorAll('.sr-delete').forEach(btn => {
+    btn.addEventListener('click', () => deleteSavedRange(parseInt(btn.dataset.srIndex)));
+  });
+}
+
+function applySavedRange(index) {
+  const ranges = getSavedRanges();
+  if (ranges[index]) setRange(ranges[index].range);
+}
+
+function deleteSavedRange(index) {
+  const ranges = getSavedRanges();
+  ranges.splice(index, 1);
+  saveSavedRanges(ranges);
+  loadSavedRanges();
 }
 
 // ═══════════════════════════════════════════════════
@@ -481,6 +638,14 @@ function init() {
   });
   document.getElementById('apply-ai-range').addEventListener('click', applyAIRange);
   document.getElementById('ai-analysis-btn').addEventListener('click', getAnalysis);
+
+  // Pot odds inputs
+  document.getElementById('pot-size').addEventListener('input', updatePotOdds);
+  document.getElementById('bet-to-call').addEventListener('input', updatePotOdds);
+
+  // Save/load ranges
+  document.getElementById('save-range-btn').addEventListener('click', saveRange);
+  loadSavedRanges();
 
   // Init
   initRangeGrid();

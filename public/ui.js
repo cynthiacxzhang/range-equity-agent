@@ -116,12 +116,6 @@ function initRangeGrid() {
     dragging = false;
     dragMode = null;
   });
-
-  // also keep click working for single taps
-  grid.addEventListener('click', (e) => {
-    const cell = e.target.closest('.rg-cell');
-    if (cell) toggleGridCell(cell);
-  });
 }
 
 // applies the current drag mode (select or deselect) to one cell

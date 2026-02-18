@@ -96,23 +96,51 @@ function initRangeGrid() {
   let dragging = false;
   let dragMode = null; // true = turning on, false = turning off
 
+  function cellFromPoint(x, y) {
+    const el = document.elementFromPoint(x, y);
+    return el ? el.closest('.rg-cell') : null;
+  }
+
   grid.addEventListener('mousedown', (e) => {
     const cell = e.target.closest('.rg-cell');
     if (!cell) return;
     e.preventDefault();
     dragging = true;
-    // first cell decides if we're selecting or deselecting
     dragMode = !S.gridState[cell.dataset.key];
     applyDragToCell(cell);
   });
 
-  grid.addEventListener('mouseover', (e) => {
+  document.addEventListener('mousemove', (e) => {
     if (!dragging) return;
-    const cell = e.target.closest('.rg-cell');
+    const cell = cellFromPoint(e.clientX, e.clientY);
     if (cell) applyDragToCell(cell);
   });
 
   document.addEventListener('mouseup', () => {
+    dragging = false;
+    dragMode = null;
+  });
+
+  // touch support
+  grid.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    const cell = cellFromPoint(touch.clientX, touch.clientY);
+    if (!cell) return;
+    e.preventDefault();
+    dragging = true;
+    dragMode = !S.gridState[cell.dataset.key];
+    applyDragToCell(cell);
+  }, { passive: false });
+
+  grid.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const cell = cellFromPoint(touch.clientX, touch.clientY);
+    if (cell) applyDragToCell(cell);
+  }, { passive: false });
+
+  document.addEventListener('touchend', () => {
     dragging = false;
     dragMode = null;
   });

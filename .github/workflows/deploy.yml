@@ -14,4 +14,5 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ba84442e15a051bfb121163e20462e2b
           command: pages deploy public --project-name poker-agent --commit-dirty=true

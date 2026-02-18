@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(npm install:*)",
+      "Bash(git -C /Users/Cynthia/poker-agent status)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npx vitest:*)",
+      "Bash(node:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(git push:*)",
+      "Bash(git subtree push:*)",
+      "Bash(wrangler pages project create:*)",
+      "Bash(wrangler pages deploy:*)",
+      "Bash(wrangler pages secret put:*)",
+      "Bash(curl:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh secret set:*)"
+    ]
+  }
+}

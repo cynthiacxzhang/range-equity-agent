@@ -145,7 +145,7 @@ body {
 .c-rank { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700; }
 .c-suit { font-size: 1rem; }
 .card-slot.c-red .c-rank, .card-slot.c-red .c-suit { color: #e05252; }
-.card-slot.c-black .c-rank, .card-slot.c-black .c-suit { color: var(--text); }
+.card-slot.c-black .c-rank, .card-slot.c-black .c-suit { color: #6ab0f5; }
 .card-slot .plus-icon { color: var(--text3); font-size: 1.2rem; }
 
 /* RANGE INPUT */
